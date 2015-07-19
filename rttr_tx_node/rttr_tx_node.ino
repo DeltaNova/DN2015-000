@@ -163,7 +163,7 @@ void setup_int() {
     PCICR |= (1 << PCIE0);  // Enable PCMSK0 covering PCINT[7:0]
     PCMSK0 |= (1 << PCINT1);  // Set mask to only interrupt on PCINT1
 }
-ISR(PCINT0_vect) {  // PCINT0 is vector for PCINT[7:0]
+ISR(PCINT0_vect) {      // PCINT0 is vector for PCINT[7:0]
     // Dev Note: Serial.println() cmds can't be used in an ISR.
     /*
         The ISR will set a flag that can be tested by the main loop.
@@ -174,13 +174,11 @@ ISR(PCINT0_vect) {  // PCINT0 is vector for PCINT[7:0]
     */
     intFlag = 0xff;  // Set interrupt flag.
 }
-ISR(WDT_vect) { // Runs when WDT timeout is reached
+ISR(WDT_vect) {         // Runs when WDT timeout is reached
     // Dev Note: This ISR is intended only for waking
     // the mcu from a sleep mode. Speed of the ISR is not important in this case.
 }
-
-void ping(int8_t msg) {
-    //DEV Note: This is development code
+void ping(int8_t msg) { // DEV Note: This is development code
 
     // Load selected data into FIFO Register for transmission
 
@@ -218,8 +216,7 @@ void ping(int8_t msg) {
             RFM.singleByteWrite(RegFifo, tststr[arrayChar]);
     }
 }
-
-void transmit() {
+void transmit() {       // Transmit Packet
     // The SPI communication and registers have been set by setup()
 
     // The RFM69W should be in Sleep mode.
@@ -238,8 +235,7 @@ void transmit() {
     }
     RFM.modeSleep();  // Return to Sleep mode to save power.
 }
-
-void loop() {
+void loop() {           // Main Program Loop
         transmit();  // Transmit Packet.
         gotosleep(); // Enter Low Power Mode until WDT interrupt.
         // Execution resumes at this point after the ISR is triggered
