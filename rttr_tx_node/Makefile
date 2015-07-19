@@ -16,7 +16,7 @@ BOARD := pro328
 #BOARD := atmega328
 
 # Adjust library path as required (space separated)
-LIBRARYPATH := /usr/share/arduino/libraries ~/Git/RFM69W/libraries
+LIBRARYPATH := /usr/share/arduino/libraries ~/Git/DN2015-000/libraries
 
 # Include Arduino Makefile
 # ========================
