@@ -1,5 +1,4 @@
-# DN2015-000
-The Ratter
+# DN2015-000 - "The Ratter"
 
 "The Ratter" is a project to enhance a rat trap with a wireless notification system. A trap is of no use if it has already triggered.
 
