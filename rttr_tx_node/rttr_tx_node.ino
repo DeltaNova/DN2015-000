@@ -3,7 +3,7 @@
 // Author: M. Tunstall
 // NOTE: This is heavily commented for my own learning/reference.
 
-#include <Wire.h>       // Used for serial comms.
+//#include <Wire.h>       // Used for serial comms.
 #include <stdint.h>     // Enable fixed width integers.
 #include <avr/wdt.h>    // Includes Inline Macros for working with the WDT
 #include <avr/sleep.h>  // Includes Inline Macros for working with Sleep Modes
@@ -11,25 +11,22 @@
 #include <avr/power.h>  // Power reduction management.
 #include "spi.h"        // Include my spi library.
 #include "rfm69w.h"     // Include my rfm69w library
-#include "rfm69w_reg.h"     // Register reference for rfm69w
+#include "rfm69w_reg.h" // Register reference for rfm69w
+#include "rttr.h"       // Rttr RX/TX Node Common functions
 
 #define DEBUG  // Enables Debugging code. Comment out to disable debug code.
 
 // Function Declarations
 void setup_int();
-void listen();
-void setup_mode();
-void setup_mode2();
 void setupRFM();
 void powerSave();
 void gotosleep();
 void setup_wdt();
 
-typedef Spi SPIx;                // Create Global instance of the Spi Class
+typedef Spi SPIx;        // Create Global instance of the Spi Class
 RFM69W<SPIx> RFM;        // Create Global instance of RFM69W Class
 volatile uint8_t intFlag = 0x00;  // Setup a flag for monitoring the interrupt.
 volatile uint8_t wdtFlag = 0x00;  // Setup a flag for monitoring WDT interrupt.
-uint8_t mode = 0x00;     // Node startup mode. Rx Default.
 
 void setup() {
 
@@ -40,13 +37,11 @@ void setup() {
 
     RFM.setReg();  // Setup the registers & initial mode for the RFM69
     setupRFM();    // Application Specific Settings RFM69W
-    //setup_mode();  // Determine the startup mode from status of PB0.
-    setup_mode2(); // Force Tx Mode.
     // Place powerSave() after setupRFM as the SPI bus is disabled until required,
     //powerSave();    // Enable powersaving features
     setup_int();   // Setup Interrupts
     setup_wdt();   // Setup WDT Timeout Interrupt
-    sei();  // Enable interrupts
+    sei();         // Enable interrupts
     return;
 }
 void powerSave() {
@@ -94,39 +89,6 @@ void setupRFM() {
     // Set DIO4/5, Disable Clk Out - None of these used/connected
     RFM.singleByteWrite(RegDioMapping2, 0x07);
 }
-
-void setup_mode() {
-    // Set PB0 as Tx/Rx Mode select input
-    DDRB &= ~(1 << DDB0);
-    // No internal pullup on PB0, hardwired to VCC (Tx) or GND (Rx).
-    PORTB &= ~(1 << PORTB0);
-    // Configure the node startup mode as a Tx or Rx.
-    if (PINB & (1 << PINB0)) {
-        // Tx Mode Selected
-        mode = 0xff;  // Change node mode
-        // RFM69W configured to startup in sleep mode and will wake to
-        // transmit as required.
-        // TODO: Check interrupt settings / DIO0 map for sleep mode
-    } else {
-        // Rx Mode Selected
-        #ifdef DEBUG
-        power_usart0_enable();// Enable Serial comms for Rx Mode.
-        Serial.begin(19200);  // Setup Serial Comms
-        Serial.println("Rx Mode");  // DEBUG: Print "Rx Mode"
-        #endif
-        RFM.modeReceive();
-    }
-    return;
-}
-
-void setup_mode2() {
-    /*
-    Dev Note:
-    Want to test power consumption without using PORTB0 to select
-    between Tx/Rx modes.
-    */
-    mode=0xff;  // Force Tx Mode.
-    }
 
 void setup_wdt() {
     // Clear WDRF - Watchdog System Reset Flag to allow WDE to be cleared later.
@@ -269,23 +231,6 @@ void ping(int8_t msg) { //TODO: This is development code and needs to be replace
     }
 }
 
-void listen() {
-    // Listens for an incomming packet via RFM69W
-    // Read the Payload Ready bit from RegIrqFlags2 to see if any data
-    #ifdef DEBUG
-    Serial.println("Start Listening: ");
-    #endif // DEBUG
-    while (RFM.singleByteRead(RegIrqFlags2) & 0x04) {
-    // True whilst FIFO still contains data.
-        Serial.print("Rec: ");
-        Serial.println(RFM.singleByteRead(RegFifo));
-    }
-    #ifdef DEBUG
-    Serial.println("Stop Listening.");
-    #endif // DEBUG
-    intFlag = 0x00;  // Reset interrupt flag
-}
-
 void transmit() {
     // The SPI communication and registers have been set by setup()
 
@@ -315,22 +260,7 @@ void transmitter() {
     }
 }
 
-void receiver() {
-    // Continuously check for incomming data
-    // Whilst interrupt flag set, listen for incomming data.
-    while (1) {
-        while (intFlag == 0xff) {
-            listen();
-        }
-    }
-}
-
 void loop() {
-
-    if (mode == 0xff) {     // If node configured as a Transmitter.
         transmitter();      // Run transmitter node loop
-    } else {                // If node configured as a Receiver.
-        receiver();         // Run transmitter node loop
-    }
 }
 
