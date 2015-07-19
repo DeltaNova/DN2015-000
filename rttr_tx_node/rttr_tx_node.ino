@@ -193,7 +193,9 @@ ISR(WDT_vect) { // Runs when WDT timeout is reached
     // the mcu from a sleep mode. Speed of the ISR is not important in this case.
 }
 
-void ping(int8_t msg) { //TODO: This is development code and needs to be replace with something more functional.
+void ping(int8_t msg) {
+    //DEV Note: This is development code
+
     // Load selected data into FIFO Register for transmission
 
     // Sends teststring stored in array via RFM69W
@@ -251,16 +253,9 @@ void transmit() {
     RFM.modeSleep();  // Return to Sleep mode to save power.
 }
 
-void transmitter() {
-    // Transmitter Node Loop
-    while (1) {
+void loop() {
         transmit();  // Transmit Packet.
         gotosleep(); // Enter Low Power Mode until WDT interrupt.
         // Execution resumes at this point after the ISR is triggered
-    }
-}
-
-void loop() {
-        transmitter();      // Run transmitter node loop
 }
 
