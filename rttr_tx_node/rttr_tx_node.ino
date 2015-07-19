@@ -29,16 +29,8 @@ volatile uint8_t intFlag = 0x00;  // Setup a flag for monitoring the interrupt.
 volatile uint8_t wdtFlag = 0x00;  // Setup a flag for monitoring WDT interrupt.
 
 void setup() {
-
-    // DEV Note: Will startup power requirements benefit from reordering of the
-    //           powerSave(), RFM.setReg(), setupRFM() functions?
-    //           The RFM module is likely to be the biggest power draw until it
-    //           makes it into sleep mode.
-
     RFM.setReg();  // Setup the registers & initial mode for the RFM69
     setupRFM();    // Application Specific Settings RFM69W
-    // Place powerSave() after setupRFM as the SPI bus is disabled until required,
-    //powerSave();    // Enable powersaving features
     setup_int();   // Setup Interrupts
     setup_wdt();   // Setup WDT Timeout Interrupt
     sei();         // Enable interrupts
@@ -61,7 +53,6 @@ void powerSave() {
     //ADCSRA &= ~(1<<ADEN);
     //ADCSRA |= (1<<ADEN);
 }
-
 void setupRFM() {
     // Write Custom Setup Values to registers
     // TODO: There are defaults that the the RFM library loads can this be merge to
@@ -89,7 +80,6 @@ void setupRFM() {
     // Set DIO4/5, Disable Clk Out - None of these used/connected
     RFM.singleByteWrite(RegDioMapping2, 0x07);
 }
-
 void setup_wdt() {
     // Clear WDRF - Watchdog System Reset Flag to allow WDE to be cleared later.
     MCUSR &= ~(1<<WDRF);
@@ -132,7 +122,6 @@ void setup_wdt() {
              (0<<WDE)|(1<<WDIE)|
              (1<<WDCE)|(1<<WDIF);
 }
-
 void gotosleep(){
     // Select the sleep mode to be use and enable it.
     // In this case the Power-down mode is selected.
@@ -166,7 +155,6 @@ void gotosleep(){
     sei();
     ADCSRA |= (1<<ADEN);
 }
-
 void setup_int() {
     // Set PB1 as interrupt input.
     DDRB &= ~(1 << DDB1);
@@ -175,7 +163,6 @@ void setup_int() {
     PCICR |= (1 << PCIE0);  // Enable PCMSK0 covering PCINT[7:0]
     PCMSK0 |= (1 << PCINT1);  // Set mask to only interrupt on PCINT1
 }
-
 ISR(PCINT0_vect) {  // PCINT0 is vector for PCINT[7:0]
     // Dev Note: Serial.println() cmds can't be used in an ISR.
     /*
@@ -187,7 +174,6 @@ ISR(PCINT0_vect) {  // PCINT0 is vector for PCINT[7:0]
     */
     intFlag = 0xff;  // Set interrupt flag.
 }
-
 ISR(WDT_vect) { // Runs when WDT timeout is reached
     // Dev Note: This ISR is intended only for waking
     // the mcu from a sleep mode. Speed of the ISR is not important in this case.
