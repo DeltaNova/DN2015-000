@@ -172,10 +172,10 @@ void setup_int() {
      EXTERNAL INTERRUPTS
     ----------------------*/
 
-    DDRD &= ~(1<<DDD2); // Set PD2 (INT0) as an input
-    PORTD |= (1<<PORTD2); // Enable internal pullup resistor
-    EICRA |= (1<<ISC00); // Set INT0 to trigger on any change
-    EIMSK |= (1<<INT0); // Enable INT0
+    DDRD &= ~(1<<DDD2);     // Set PD2 (INT0) as an input
+    PORTD |= (1<<PORTD2);   // Enable internal pullup resistor
+    EICRA |= (1<<ISC00);    // Set INT0 to trigger on any change
+    EIMSK &= ~(1<<INT0);    // Disable INT0.
 
 }
 ISR(PCINT0_vect) {      // PCINT0 is vector for PCINT[7:0]
@@ -194,8 +194,9 @@ ISR(INT0_vect) {  // Triggers on INT0 (See EICRA Reg for Trigger Setup)
     // The ISR does nothing. The act of triggering the ISR wakes the
     // MCU from its deep sleep and resumes program execution.
 
-    // DEV NOTE: Might want to disable Interrupt to prevent trigger
+    // DEV NOTE: Disable Interrupt to prevent trigger
     //     jitter causing multiple executions of ISR
+    EIMSK &= ~(1<<INT0); // Disable INT0
 }
 
 ISR(WDT_vect) {         // Runs when WDT timeout is reached
@@ -263,7 +264,8 @@ void transmit() {       // Transmit Packet
 }
 void loop() {           // Main Program Loop
         transmit();  // Transmit Packet.
-        gotosleep(); // Enter Low Power Mode until WDT interrupt.
+        EIMSK |= (1<<INT0); //Enable INT0
+        gotosleep(); // Enter Low Power Mode until INTO interrupt.
         // Execution resumes at this point after the ISR is triggered
 }
 
