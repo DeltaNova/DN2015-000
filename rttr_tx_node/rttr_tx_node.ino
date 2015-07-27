@@ -118,8 +118,9 @@ void setup_wdt() {
     */
 
     // Set Watch1dog Timer for Interrupt Mode, 8 second timeout.
+    // WDT is disabled at this point.
     WDTCSR = (1<<WDP3)|(0<<WDP2)|(0<<WDP1)|(1<<WDP0)|
-             (0<<WDE)|(1<<WDIE)|
+             (0<<WDE)|(0<<WDIE)|
              (1<<WDCE)|(1<<WDIF);
 }
 void gotosleep(){
@@ -156,12 +157,26 @@ void gotosleep(){
     ADCSRA |= (1<<ADEN);
 }
 void setup_int() {
+    /*---------------------
+     PIN CHANGE INTERRUPTS
+    ----------------------*/
+
     // Set PB1 as interrupt input.
     DDRB &= ~(1 << DDB1);
     // Not using internal pullup on PB1 as want to trigger on a logic 1
     // RFM69W DIO0 is logic 0 until set. Pull down resistor not used.
     PCICR |= (1 << PCIE0);  // Enable PCMSK0 covering PCINT[7:0]
     PCMSK0 |= (1 << PCINT1);  // Set mask to only interrupt on PCINT1
+
+    /*---------------------
+     EXTERNAL INTERRUPTS
+    ----------------------*/
+
+    DDRD &= ~(1<<DDD2); // Set PD2 (INT0) as an input
+    PORTD |= (1<<PORTD2); // Enable internal pullup resistor
+    EICRA |= (1<<ISC00); // Set INT0 to trigger on any change
+    EIMSK |= (1<<INT0); // Enable INT0
+
 }
 ISR(PCINT0_vect) {      // PCINT0 is vector for PCINT[7:0]
     // Dev Note: Serial.println() cmds can't be used in an ISR.
@@ -174,9 +189,20 @@ ISR(PCINT0_vect) {      // PCINT0 is vector for PCINT[7:0]
     */
     intFlag = 0xff;  // Set interrupt flag.
 }
+
+ISR(INT0_vect) {  // Triggers on INT0 (See EICRA Reg for Trigger Setup)
+    // The ISR does nothing. The act of triggering the ISR wakes the
+    // MCU from its deep sleep and resumes program execution.
+
+    // DEV NOTE: Might want to disable Interrupt to prevent trigger
+    //     jitter causing multiple executions of ISR
+}
+
 ISR(WDT_vect) {         // Runs when WDT timeout is reached
     // Dev Note: This ISR is intended only for waking
     // the mcu from a sleep mode. Speed of the ISR is not important in this case.
+
+    WDTCSR &= ~(1<<WDIE); // Disable WDR Interrupt
 }
 void ping(int8_t msg) { // DEV Note: This is development code
 
