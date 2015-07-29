@@ -3,18 +3,18 @@
 // Author: M. Tunstall
 // NOTE: This is heavily commented for my own learning/reference.
 
-//#include <Wire.h>       // Used for serial comms.
-#include <stdint.h>     // Enable fixed width integers.
-#include <avr/wdt.h>    // Includes Inline Macros for working with the WDT
-#include <avr/sleep.h>  // Includes Inline Macros for working with Sleep Modes
+//#include <Wire.h>         // Used for serial comms.
+#include <stdint.h>         // Enable fixed width integers.
+#include <avr/wdt.h>        // Inc. Inline Macros for WDT
+#include <avr/sleep.h>      // Inc. Inline Macros for Sleep Modes
 #include <avr/interrupt.h>  // Required for interrupts.
-#include <avr/power.h>  // Power reduction management.
-#include "spi.h"        // Include my spi library.
-#include "rfm69w.h"     // Include my rfm69w library
-#include "rfm69w_reg.h" // Register reference for rfm69w
-#include "rttr.h"       // Rttr RX/TX Node Common functions
+#include <avr/power.h>      // Power reduction management.
+#include "spi.h"            // Include my spi library.
+#include "rfm69w.h"         // Include my rfm69w library
+#include "rfm69w_reg.h"     // Register reference for rfm69w
+#include "rttr.h"           // Rttr RX/TX Node Common functions
 
-#define DEBUG  // Enables Debugging code. Comment out to disable debug code.
+#define DEBUG  // Enables Debug code. Comment out to disable debug code.
 
 // Function Declarations
 void setup_int();
@@ -22,11 +22,14 @@ void setupRFM();
 void powerSave();
 void gotosleep();
 void setup_wdt();
+void trap_set();
 
 typedef Spi SPIx;        // Create Global instance of the Spi Class
 RFM69W<SPIx> RFM;        // Create Global instance of RFM69W Class
-volatile uint8_t intFlag = 0x00;  // Setup a flag for monitoring the interrupt.
-volatile uint8_t wdtFlag = 0x00;  // Setup a flag for monitoring WDT interrupt.
+volatile uint8_t intFlag = 0x00;  // Setup a flag for the interrupt.
+volatile uint8_t wdtFlag = 0x00;  // Setup a flag for WDT interrupt.
+uint8_t count = 0;          // Setup value for loop count
+unit8_t reset_count = 0;    // Setup value for reset count
 
 void setup() {
     RFM.setReg();  // Setup the registers & initial mode for the RFM69
@@ -262,10 +265,50 @@ void transmit() {       // Transmit Packet
     }
     RFM.modeSleep();  // Return to Sleep mode to save power.
 }
+
+
+void trap_set() {
+        // Read PortD2 to get sensor state
+        // 0 = set, 1 = triggered (Rat in Trap)
+
+        // if PD2 = 1
+        //      reset_count=0;
+        //      return;
+        // else
+        //      reset_count = reset_count + 1;
+        //
+        //      if (reset_count == 3):
+        //          count = 0;
+        //          reset_count = 0;
+        //          Tx Reset Packet
+        //          Enable INT0
+        //          gotosleep();
+        //          Wake at this point from INT0 ISR
+        //          transmit();
+        //          count = 0;
+        //      else:
+        //          // Do nothing
+        //          return
+        return
+}
 void loop() {           // Main Program Loop
-        transmit();  // Transmit Packet.
+        trap_set(); // Check if trap set
+        count = count + 1; // Increment Loop Counter
+        if (count == 255)
+            transmit();
+            count = 0;
+        else
+            // Enable WDT
+            gotosleep();
+
+
+        /*
         EIMSK |= (1<<INT0); //Enable INT0
         gotosleep(); // Enter Low Power Mode until INTO interrupt.
         // Execution resumes at this point after the ISR is triggered
+        transmit();  // Transmit Packet.
+        count = 0; // Zero Counter
+        counter();
+        */
 }
 
