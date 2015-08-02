@@ -3,7 +3,7 @@
 // Author: M. Tunstall
 // NOTE: This is heavily commented for my own learning/reference.
 
-//#include <Wire.h>         // Used for serial comms.
+// #include <Wire.h>         // Used for serial comms.
 #include <stdint.h>         // Enable fixed width integers.
 #include <avr/wdt.h>        // Inc. Inline Macros for WDT
 #include <avr/sleep.h>      // Inc. Inline Macros for Sleep Modes
@@ -29,7 +29,7 @@ RFM69W<SPIx> RFM;        // Create Global instance of RFM69W Class
 volatile uint8_t intFlag = 0x00;  // Setup a flag for the interrupt.
 volatile uint8_t wdtFlag = 0x00;  // Setup a flag for WDT interrupt.
 uint8_t count = 0;          // Setup value for loop count
-unit8_t reset_count = 0;    // Setup value for reset count
+uint8_t reset_count = 0;    // Setup value for reset count
 
 void setup() {
     RFM.setReg();  // Setup the registers & initial mode for the RFM69
@@ -40,21 +40,22 @@ void setup() {
     return;
 }
 void powerSave() {
-    power_adc_disable(); // Not using ADC
-    power_twi_disable(); // Not using I2C
+    power_adc_disable();    // Not using ADC
+    power_twi_disable();    // Not using I2C
     power_timer0_disable();
     power_timer1_disable();
     power_timer2_disable();
-    //power_spi_disable();  // Todo: Might need to reenable for Rx Mode later.
-    power_usart0_disable(); // Disable by default, reenable if needed.
+    // power_spi_disable();     // Todo: Might need to reenable for Rx Mode later.
+    power_usart0_disable();     // Disable by default, reenable if needed.
 
     // Disable Interrupts
     // Note: No need as they are not enabled until after the powerSave function is used.
-    //ACSR |= ~(1<<ACI);// Clear the analogue comparator interrupt if it was trigged from the disable command.
-    //ACSR &= (1<<ACD); // Disable the analogue comparator
-    //ADCSRA = 0; // Disable ADC
-    //ADCSRA &= ~(1<<ADEN);
-    //ADCSRA |= (1<<ADEN);
+    // Clear the analogue comparator interrupt if it was trigged from the disable command.
+    // ACSR |= ~(1<<ACI);
+    // ACSR &= (1<<ACD); // Disable the analogue comparator
+    // ADCSRA = 0; // Disable ADC
+    // ADCSRA &= ~(1<<ADEN);
+    // ADCSRA |= (1<<ADEN);
 }
 void setupRFM() {
     // Write Custom Setup Values to registers
@@ -85,14 +86,14 @@ void setupRFM() {
 }
 void setup_wdt() {
     // Clear WDRF - Watchdog System Reset Flag to allow WDE to be cleared later.
-    MCUSR &= ~(1<<WDRF);
+    MCUSR &= ~(1 << WDRF);
     /*
     To perform adjustments to WDE & prescaler bits:
     - Set the WDCE - watchdog change enable bit
     - Make adjustments within 4 clock cycles.
     */
 
-    WDTCSR |= (1<<WDCE)| (1<<WDE); // Set WDCE
+    WDTCSR |= (1 << WDCE)| (1 << WDE);  // Set WDCE
 
     /*
     WDTCSR Register
@@ -122,18 +123,18 @@ void setup_wdt() {
 
     // Set Watch1dog Timer for Interrupt Mode, 8 second timeout.
     // WDT is disabled at this point.
-    WDTCSR = (1<<WDP3)|(0<<WDP2)|(0<<WDP1)|(1<<WDP0)|
-             (0<<WDE)|(0<<WDIE)|
-             (1<<WDCE)|(1<<WDIF);
+    WDTCSR = (1 << WDP3)|(0 << WDP2)|(0 << WDP1)|(1 << WDP0)|
+             (0 << WDE)|(0 << WDIE)|
+             (1 << WDCE)|(1 << WDIF);
 }
-void gotosleep(){
+void gotosleep() {
     // Select the sleep mode to be use and enable it.
     // In this case the Power-down mode is selected.
-    //MCUCR |= (1<<SM1)|(1<<SE);
+    // MCUCR |= (1<<SM1)|(1<<SE);
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 
     // Todo: Does turning off the external interrupts INT1,INT0 reduce sleep power?
-    //EIMSK = 0x00;
+    // EIMSK = 0x00;
 
     /*
     Dev Note:
@@ -146,18 +147,18 @@ void gotosleep(){
         sleep_mode();
     */
 
-    ADCSRA &= ~(1<<ADEN);
+    ADCSRA &= ~(1 << ADEN);
     cli();
     sleep_enable();
 
     // TODO: Reset WDT Count. Might not make a huge difference for this application.
     //wdt_reset(); // Reset the watchdog timer for full sleep cycle
-    sleep_bod_disable(); // Timing critical - must be done right before endtering sleep mode.
+    sleep_bod_disable();  // Timing critical - must be done right before entering sleep mode.
     sei();
     sleep_cpu();
     sleep_disable();
     sei();
-    ADCSRA |= (1<<ADEN);
+    ADCSRA |= (1 << ADEN);
 }
 void setup_int() {
     /*---------------------
@@ -175,11 +176,10 @@ void setup_int() {
      EXTERNAL INTERRUPTS
     ----------------------*/
 
-    DDRD &= ~(1<<DDD2);     // Set PD2 (INT0) as an input
-    PORTD |= (1<<PORTD2);   // Enable internal pullup resistor
-    EICRA |= (1<<ISC00);    // Set INT0 to trigger on any change
-    EIMSK &= ~(1<<INT0);    // Disable INT0.
-
+    DDRD &= ~(1 << DDD2);     // Set PD2 (INT0) as an input
+    PORTD |= (1 << PORTD2);   // Enable internal pullup resistor
+    EICRA |= (1 << ISC00);    // Set INT0 to trigger on any change
+    EIMSK &= ~(1 << INT0);    // Disable INT0.
 }
 ISR(PCINT0_vect) {      // PCINT0 is vector for PCINT[7:0]
     // Dev Note: Serial.println() cmds can't be used in an ISR.
@@ -199,17 +199,16 @@ ISR(INT0_vect) {  // Triggers on INT0 (See EICRA Reg for Trigger Setup)
 
     // DEV NOTE: Disable Interrupt to prevent trigger
     //     jitter causing multiple executions of ISR
-    EIMSK &= ~(1<<INT0); // Disable INT0
+    EIMSK &= ~(1 << INT0);  // Disable INT0
 }
 
 ISR(WDT_vect) {         // Runs when WDT timeout is reached
     // Dev Note: This ISR is intended only for waking
     // the mcu from a sleep mode. Speed of the ISR is not important in this case.
 
-    WDTCSR &= ~(1<<WDIE); // Disable WDR Interrupt
+    WDTCSR &= ~(1 << WDIE);  // Disable WDR Interrupt
 }
-void ping(int8_t msg) { // DEV Note: This is development code
-
+void ping(int8_t msg) {  // DEV Note: This is development code
     // Load selected data into FIFO Register for transmission
 
     // Sends teststring stored in array via RFM69W
