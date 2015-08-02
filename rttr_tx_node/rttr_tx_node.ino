@@ -226,6 +226,7 @@ void ping(int8_t msg) {  // DEV Note: This is development code
     //           follow on packet it should be sent as a separate Tx
     //           operation.
     uint8_t tststr2[] = "0123456789ABCDEF";
+    uint8_t tststr3[] = "Reset!";
 
     switch (msg) {
     case 0:
@@ -240,17 +241,21 @@ void ping(int8_t msg) {  // DEV Note: This is development code
         for (uint8_t arrayChar = 0; arrayChar < (sizeof(tststr2)-1); arrayChar++)
             RFM.singleByteWrite(RegFifo, tststr2[arrayChar]);
         break;
+    case 3:
+        for (uint8_t arrayChar = 0; arrayChar < (sizeof(tststr3)-1); arrayChar++)
+            RFM.singleByteWrite(RegFifo, tststr3[arrayChar]);
+        break;
     default:
         for (uint8_t arrayChar = 0; arrayChar < (sizeof(tststr)-1); arrayChar++)
             RFM.singleByteWrite(RegFifo, tststr[arrayChar]);
     }
 }
-void transmit() {       // Transmit Packet
+void transmit(int8_t pkt) {       // Transmit Packet
     // The SPI communication and registers have been set by setup()
 
     // The RFM69W should be in Sleep mode.
     // Load bytes to transmit into the FIFO register.
-    ping(2);  // Pass an int to select which msg to send.
+    ping(pkt);  // Pass an int to select which msg to send.
     // Data will be sent once the conditions for Tx have been met.
     // In packet mode & data already in the FIFO buffer this should
     // happen as soon as Tx mode is enabled.
