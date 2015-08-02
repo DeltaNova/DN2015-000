@@ -34,6 +34,7 @@ uint8_t reset_count = 0;    // Setup value for reset count
 void setup() {
     RFM.setReg();  // Setup the registers & initial mode for the RFM69
     setupRFM();    // Application Specific Settings RFM69W
+    cli();         // Disable interrupts whilst setting them up.
     setup_int();   // Setup Interrupts
     setup_wdt();   // Setup WDT Timeout Interrupt
     sei();         // Enable interrupts
@@ -214,9 +215,9 @@ void ping(int8_t msg) {  // DEV Note: This is development code
     // Sends teststring stored in array via RFM69W
     // Workout how many characters there are to send.
     // 1 is deducted from count to remove the trailing null char.
-    uint8_t tststr[] = "ERROR!";
-    uint8_t tststr0[] = "Hello_";
-    uint8_t tststr1[] = "World!";
+    uint8_t tststr[] = "ERROR!";  // Case Default
+    uint8_t tststr0[] = "Hello_"; // Case 0
+    uint8_t tststr1[] = "World!"; // Case 1
     // Dev Note: Should this result in 2 packets being received?
     //           Only detecting one.
     // - Update: Since fixed length packets are used the only the data
@@ -225,8 +226,8 @@ void ping(int8_t msg) {  // DEV Note: This is development code
     //           any residual data in the FIFO. If there is data for a
     //           follow on packet it should be sent as a separate Tx
     //           operation.
-    uint8_t tststr2[] = "0123456789ABCDEF";
-    uint8_t tststr3[] = "Reset!";
+    uint8_t tststr2[] = "0123456789ABCDEF"; // Case 2
+    uint8_t tststr3[] = "Reset!"; // Case 3
 
     switch (msg) {
     case 0:
@@ -278,14 +279,15 @@ void trap_set() {
             reset_count = 0;
     } else {
             reset_count = reset_count + 1;
+
             if (reset_count == 3) {
                     count = 0;
                     reset_count = 0;
-                    transmit(3);          // TODO: Add code to send reset packet
-                    EIMSK |= (1 << INT0);  // Enable INT0
+                    transmit(3);            // Send reset packet
+                    EIMSK |= (1 << INT0);   // Enable INT0
                     gotosleep();
                     // Wakeup here from INT0 ISR
-                    transmit(2);
+                    transmit(0);            // Send Hello packet
                     count = 0;
                 }
         }
@@ -294,7 +296,7 @@ void loop() {               // Main Program Loop
         trap_set();         // Check if trap set
         count = count + 1;  // Increment Loop Counter
         if (count == 255) {
-            transmit(2);
+            transmit(0);    // Send Hello packet
             count = 0;
         } else {
             WDTCSR |= (1 << WDIE);    // Enable WDT Interrupt
