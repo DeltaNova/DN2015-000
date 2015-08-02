@@ -216,6 +216,7 @@ void ping(int8_t msg) {  // DEV Note: This is development code
     //           operation.
     uint8_t tststr2[] = "0123456789ABCDEF"; // Case 2
     uint8_t tststr3[] = "Reset!"; // Case 3
+    uint8_t tststr4[] = "DEBUG!"; // Case 4
 
     switch (msg) {
     case 0:
@@ -233,6 +234,10 @@ void ping(int8_t msg) {  // DEV Note: This is development code
     case 3:
         for (uint8_t arrayChar = 0; arrayChar < (sizeof(tststr3)-1); arrayChar++)
             RFM.singleByteWrite(RegFifo, tststr3[arrayChar]);
+        break;
+    case 4:
+        for (uint8_t arrayChar = 0; arrayChar < (sizeof(tststr4)-1); arrayChar++)
+            RFM.singleByteWrite(RegFifo, tststr4[arrayChar]);
         break;
     default:
         for (uint8_t arrayChar = 0; arrayChar < (sizeof(tststr)-1); arrayChar++)
@@ -266,6 +271,8 @@ void trap_set() {
         reset_count = 0;
     } else {
         reset_count = reset_count + 1;
+        // TODO: Add an additional DEBUG Tx Packet to count cycles
+        transmit(4); // DEBUG
         if (reset_count == 3) {
             count = 0;
             reset_count = 0;
