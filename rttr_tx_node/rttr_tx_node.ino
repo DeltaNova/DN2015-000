@@ -274,37 +274,32 @@ void transmit(int8_t pkt) {       // Transmit Packet
 void trap_set() {
         // Read PortD2 to get sensor state
         // 0 = set, 1 = triggered (Rat in Trap)
-
-        // if PD2 = 1
-        //      reset_count=0;
-        //      return;
-        // else
-        //      reset_count = reset_count + 1;
-        //
-        //      if (reset_count == 3):
-        //          count = 0;
-        //          reset_count = 0;
-        //          Tx Reset Packet
-        //          Enable INT0
-        //          gotosleep();
-        //          Wake at this point from INT0 ISR
-        //          transmit();
-        //          count = 0;
-        //      else:
-        //          // Do nothing
-        //          return
-        return
+    if (PIND2 == 1) {
+            reset_count = 0;
+    } else {
+            reset_count = reset_count + 1;
+            if (reset_count == 3) {
+                    count = 0;
+                    reset_count = 0;
+                    transmit(3);          // TODO: Add code to send reset packet
+                    EIMSK |= (1 << INT0);  // Enable INT0
+                    gotosleep();
+                    // Wakeup here from INT0 ISR
+                    transmit(2);
+                    count = 0;
+                }
+        }
 }
-void loop() {           // Main Program Loop
-        trap_set(); // Check if trap set
-        count = count + 1; // Increment Loop Counter
-        if (count == 255)
-            transmit();
+void loop() {               // Main Program Loop
+        trap_set();         // Check if trap set
+        count = count + 1;  // Increment Loop Counter
+        if (count == 255) {
+            transmit(2);
             count = 0;
-        else
-            // Enable WDT
+        } else {
+            WDTCSR |= (1 << WDIE);    // Enable WDT Interrupt
             gotosleep();
-
+        }
 
         /*
         EIMSK |= (1<<INT0); //Enable INT0
