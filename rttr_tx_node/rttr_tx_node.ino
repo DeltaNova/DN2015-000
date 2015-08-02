@@ -36,7 +36,7 @@ void setup() {
     setupRFM();    // Application Specific Settings RFM69W
     cli();         // Disable interrupts whilst setting them up.
     setup_int();   // Setup Interrupts
-    setup_wdt();   // Setup WDT Timeout Interrupt
+    // setup_wdt();   // Setup WDT Timeout Interrupt
     sei();         // Enable interrupts
     return;
 }
@@ -46,17 +46,8 @@ void powerSave() {
     power_timer0_disable();
     power_timer1_disable();
     power_timer2_disable();
-    // power_spi_disable();     // Todo: Might need to reenable for Rx Mode later.
-    power_usart0_disable();     // Disable by default, reenable if needed.
-
-    // Disable Interrupts
-    // Note: No need as they are not enabled until after the powerSave function is used.
-    // Clear the analogue comparator interrupt if it was trigged from the disable command.
-    // ACSR |= ~(1<<ACI);
-    // ACSR &= (1<<ACD); // Disable the analogue comparator
-    // ADCSRA = 0; // Disable ADC
-    // ADCSRA &= ~(1<<ADEN);
-    // ADCSRA |= (1<<ADEN);
+    // power_spi_disable();     // Todo: Might need for Rx Mode later.
+    power_usart0_disable();     // Disable by default, enable if needed.
 }
 void setupRFM() {
     // Write Custom Setup Values to registers
@@ -123,20 +114,14 @@ void setup_wdt() {
     */
 
     // Set Watch1dog Timer for Interrupt Mode, 8 second timeout.
-    // WDT is disabled at this point.
+    // WDT is enabled at this point.
     WDTCSR = (1 << WDP3)|(0 << WDP2)|(0 << WDP1)|(1 << WDP0)|
-             (0 << WDE)|(0 << WDIE)|
+             (1 << WDE)|(1 << WDIE)|
              (1 << WDCE)|(1 << WDIF);
 }
 void gotosleep() {
     // Select the sleep mode to be use and enable it.
-    // In this case the Power-down mode is selected.
-    // MCUCR |= (1<<SM1)|(1<<SE);
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-
-    // Todo: Does turning off the external interrupts INT1,INT0 reduce sleep power?
-    // EIMSK = 0x00;
-
     /*
     Dev Note:
         // This sequence....
@@ -148,17 +133,21 @@ void gotosleep() {
         sleep_mode();
     */
 
+    // Disable ADC to save power during sleep.
     ADCSRA &= ~(1 << ADEN);
     cli();
     sleep_enable();
 
-    // TODO: Reset WDT Count. Might not make a huge difference for this application.
-    //wdt_reset(); // Reset the watchdog timer for full sleep cycle
-    sleep_bod_disable();  // Timing critical - must be done right before entering sleep mode.
+    // TODO: Reset WDT Count. Might not make a huge difference.
+    // wdt_reset(); // Reset the watchdog timer for full sleep cycle
+
+    // Timing critical - must be done right before entering sleep mode.
+    sleep_bod_disable();
     sei();
     sleep_cpu();
     sleep_disable();
     sei();
+    // Dev Note: Do I need to be reenabling this?
     ADCSRA |= (1 << ADEN);
 }
 void setup_int() {
@@ -206,8 +195,7 @@ ISR(INT0_vect) {  // Triggers on INT0 (See EICRA Reg for Trigger Setup)
 ISR(WDT_vect) {         // Runs when WDT timeout is reached
     // Dev Note: This ISR is intended only for waking
     // the mcu from a sleep mode. Speed of the ISR is not important in this case.
-
-    WDTCSR &= ~(1 << WDIE);  // Disable WDR Interrupt
+    wdt_disable();
 }
 void ping(int8_t msg) {  // DEV Note: This is development code
     // Load selected data into FIFO Register for transmission
@@ -271,45 +259,33 @@ void transmit(int8_t pkt) {       // Transmit Packet
     RFM.modeSleep();  // Return to Sleep mode to save power.
 }
 
-
 void trap_set() {
-        // Read PortD2 to get sensor state
-        // 0 = set, 1 = triggered (Rat in Trap)
-    if (PIND2 == 1) {
-            reset_count = 0;
+    // Read PortD2 to get sensor state
+    // 0 = set, 1 = triggered (Rat in Trap)
+    if (PIND2 == 1) {       // TODO: Check this is detecting correctly
+        reset_count = 0;
     } else {
-            reset_count = reset_count + 1;
-
-            if (reset_count == 3) {
-                    count = 0;
-                    reset_count = 0;
-                    transmit(3);            // Send reset packet
-                    EIMSK |= (1 << INT0);   // Enable INT0
-                    gotosleep();
-                    // Wakeup here from INT0 ISR
-                    transmit(0);            // Send Hello packet
-                    count = 0;
-                }
+        reset_count = reset_count + 1;
+        if (reset_count == 3) {
+            count = 0;
+            reset_count = 0;
+            transmit(3);            // Send packet indicating Reset
+            EIMSK |= (1 << INT0);   // Enable INT0
+            gotosleep();            // Sleep; continue on INT0 ISR
+            transmit(0);            // Send Hello packet
+            count = 0;
         }
+    }
 }
 void loop() {               // Main Program Loop
-        trap_set();         // Check if trap set
-        count = count + 1;  // Increment Loop Counter
-        if (count == 255) {
-            transmit(0);    // Send Hello packet
-            count = 0;
-        } else {
-            WDTCSR |= (1 << WDIE);    // Enable WDT Interrupt
-            gotosleep();
-        }
-
-        /*
-        EIMSK |= (1<<INT0); //Enable INT0
-        gotosleep(); // Enter Low Power Mode until INTO interrupt.
-        // Execution resumes at this point after the ISR is triggered
-        transmit();  // Transmit Packet.
-        count = 0; // Zero Counter
-        counter();
-        */
+    trap_set();             // Check if trap set
+    count = count + 1;      // Increment Loop Counter
+    if (count == 255) {     // Tx new packet after 255 cycles
+        transmit(0);        // Send Hello packet
+        count = 0;
+    } else {
+        setup_wdt();        // Enable WDT interrupt.
+        gotosleep();        // Sleep; wake & continue on WDT timeout.
+    }
 }
 
