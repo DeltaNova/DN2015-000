@@ -274,26 +274,28 @@ void transmit(int8_t pkt) {       // Transmit Packet
     // Having a delay appears to make the program execute more
     // consistantly. Why?? Sleep Delay??
     _delay_ms(1000); // 800uS delay, wait for RFM69W to go back to sleep
+    // Delays that work: 1000ms,
+    // Delays that dont work: 500ms, 800ms
 }
 
 uint8_t trap_set(uint8_t count) {
-    static uint8_t reset_count = 0; // Setup persistant counter, initially 0.
+    static uint8_t reset_count = 0x00; // Setup persistant counter, initially 0.
     // Read PortD2 to get sensor state
     // 0 = set, 1 = triggered (Rat in Trap)
     if (PIND & ( 1 << PIND2)) {  // Try this in place of the line below.     <<<<<<< This needs work
     //if (PIND2 == 1) {       // TODO: Check this is detecting correctly
-        reset_count = 0;
+        reset_count = 0x00;
     } else {
-        reset_count = reset_count + 1;
+        reset_count++;
         transmit(4);                // Transmit DEBUG packet
-        if (reset_count == 3) {
+        if (reset_count == 0x03) {
             transmit(3);            // Send packet indicating Reset
-            count = 0;
-            reset_count = 0;
+            count = 0x00;
+            reset_count = 0x00;
             EIMSK |= (1 << INT0);   // Enable INT0
             gotosleep();            // Sleep; continue on INT0 ISR
             transmit(0);            // Send Hello packet
-            count = 0;
+            count = 0x00;
         }
     }
     return count;
