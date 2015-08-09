@@ -30,8 +30,6 @@ typedef Spi SPIx;        // Create Global instance of the Spi Class
 RFM69W<SPIx> RFM;        // Create Global instance of RFM69W Class
 volatile uint8_t intFlag = 0x00;  // Setup a flag for the interrupt.
 volatile uint8_t wdtFlag = 0x00;  // Setup a flag for WDT interrupt.
-uint8_t count = 0;          // Setup value for loop count
-uint8_t reset_count = 0;    // Setup value for reset count
 
 void setup() {
     RFM.setReg();  // Setup the registers & initial mode for the RFM69
@@ -269,7 +267,8 @@ void transmit(int8_t pkt) {       // Transmit Packet
     _delay_ms(1000); // 800uS delay, wait for RFM69W to go back to sleep
 }
 
-void trap_set() {
+uint8_t trap_set(uint8_t count) {
+    static uint8_t reset_count = 0; // Setup persistant counter, initially 0.
     // Read PortD2 to get sensor state
     // 0 = set, 1 = triggered (Rat in Trap)
     if (PIND2 == 1) {       // TODO: Check this is detecting correctly
@@ -280,22 +279,24 @@ void trap_set() {
         transmit(4); // DEBUG
         if (reset_count == 3) {
             //delay(1000); // DEBUG
+            transmit(3);            // Send packet indicating Reset
             count = 0;
             reset_count = 0;
-            transmit(3);            // Send packet indicating Reset
             EIMSK |= (1 << INT0);   // Enable INT0
             gotosleep();            // Sleep; continue on INT0 ISR
             transmit(0);            // Send Hello packet
             count = 0;
         }
     }
+    return count;
 }
 void loop() {               // Main Program Loop
-    trap_set();             // Check if trap set
-    count = count + 1;      // Increment Loop Counter
-    if (count == 255) {     // Tx new packet after 255 cycles
+    static uint8_t count = 0x00;   // Setup persistant counter, initially 0.
+    count = trap_set(count);             // Check if trap set
+    count++;                // Increment Loop Counter
+    if (count == 0xff) {    // Tx new packet after 255 cycles
         transmit(0);        // Send Hello packet
-        count = 0;
+        count = 0x00;
     } else {
         setup_wdt();        // Enable WDT interrupt.
         gotosleep();        // Sleep; wake & continue on WDT timeout.
