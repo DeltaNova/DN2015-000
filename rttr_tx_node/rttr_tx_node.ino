@@ -160,11 +160,11 @@ void setup_int() {
     ----------------------*/
 
     // Set PB1 as interrupt input.
-    DDRB &= ~(1 << DDB1);
+    //DDRB &= ~(1 << DDB1);
     // Not using internal pullup on PB1 as want to trigger on a logic 1
     // RFM69W DIO0 is logic 0 until set. Pull down resistor not used.
-    PCICR |= (1 << PCIE0);  // Enable PCMSK0 covering PCINT[7:0]
-    PCMSK0 |= (1 << PCINT1);  // Set mask to only interrupt on PCINT1
+    //PCICR |= (1 << PCIE0);  // Enable PCMSK0 covering PCINT[7:0]
+    //PCMSK0 |= (1 << PCINT1);  // Set mask to only interrupt on PCINT1
 
     /*---------------------
      EXTERNAL INTERRUPTS
@@ -175,7 +175,7 @@ void setup_int() {
     EICRA |= (1 << ISC00);    // Set INT0 to trigger on any change
     EIMSK &= ~(1 << INT0);    // Disable INT0.
 }
-ISR(PCINT0_vect) {      // PCINT0 is vector for PCINT[7:0]
+/*ISR(PCINT0_vect) {      // PCINT0 is vector for PCINT[7:0]
     // Dev Note: Serial.println() cmds can't be used in an ISR.
     /*
         The ISR will set a flag that can be tested by the main loop.
@@ -185,7 +185,7 @@ ISR(PCINT0_vect) {      // PCINT0 is vector for PCINT[7:0]
         over the SPI bus.
     */
     intFlag = 0xff;  // Set interrupt flag.
-}
+}*/
 
 ISR(INT0_vect) {  // Triggers on INT0 (See EICRA Reg for Trigger Setup)
     // The ISR does nothing. The act of triggering the ISR wakes the
