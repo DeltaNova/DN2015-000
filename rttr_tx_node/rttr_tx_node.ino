@@ -259,6 +259,10 @@ void transmit(int8_t pkt) {       // Transmit Packet
     // In packet mode & data already in the FIFO buffer this should
     // happen as soon as Tx mode is enabled.
     RFM.modeTransmit();  // Data being sent at 4.8kbps
+
+    // Should not have to worry about Tx Startup delay (800uS) as the
+    // program waits here until the packet sent flag is raised.
+
     while (!(RFM.singleByteRead(RegIrqFlags2) & 0x08)) {
         // Keeps checking to see if the packet sent bit is set.
         // Once packet send is confirmed the program will continue.
@@ -267,6 +271,8 @@ void transmit(int8_t pkt) {       // Transmit Packet
         // the program has finished with it.
     }
     RFM.modeSleep();  // Return to Sleep mode to save power.
+    // Having a delay appears to make the program execute more
+    // consistantly. Why?? Sleep Delay??
     _delay_ms(1000); // 800uS delay, wait for RFM69W to go back to sleep
 }
 
@@ -274,15 +280,13 @@ uint8_t trap_set(uint8_t count) {
     static uint8_t reset_count = 0; // Setup persistant counter, initially 0.
     // Read PortD2 to get sensor state
     // 0 = set, 1 = triggered (Rat in Trap)
-    if (PIND & ( 1 << PIND2)) {  // Try this in place of the line below.
+    if (PIND & ( 1 << PIND2)) {  // Try this in place of the line below.     <<<<<<< This needs work
     //if (PIND2 == 1) {       // TODO: Check this is detecting correctly
         reset_count = 0;
     } else {
         reset_count = reset_count + 1;
-        // TODO: Add an additional DEBUG Tx Packet to count cycles
-        transmit(4); // DEBUG
+        transmit(4);                // Transmit DEBUG packet
         if (reset_count == 3) {
-            //delay(1000); // DEBUG
             transmit(3);            // Send packet indicating Reset
             count = 0;
             reset_count = 0;
@@ -294,9 +298,9 @@ uint8_t trap_set(uint8_t count) {
     }
     return count;
 }
-void loop() {               // Main Program Loop
-    static uint8_t count = 0x00;   // Setup persistant counter, initially 0.
-    count = trap_set(count);             // Check if trap set
+void loop() {                      // Main Program Loop
+    static uint8_t count = 0x00;   // Persistant counter, initially 0.
+    count = trap_set(count);       // Check if trap set
     count++;                // Increment Loop Counter
     if (count == 0xff) {    // Tx new packet after 255 cycles
         transmit(0);        // Send Hello packet
