@@ -199,7 +199,7 @@ ISR(INT0_vect) {  // Triggers on INT0 (See EICRA Reg for Trigger Setup)
 ISR(WDT_vect) {         // Runs when WDT timeout is reached
     // Dev Note: This ISR is intended only for waking
     // the mcu from a sleep mode. Speed of the ISR is not important in this case.
-    wdt_disable();
+
 }
 void ping(int8_t msg) {  // DEV Note: This is development code
     // Load selected data into FIFO Register for transmission
@@ -310,6 +310,7 @@ void loop() {                      // Main Program Loop
     } else {
         setup_wdt();        // Enable WDT interrupt.
         gotosleep();        // Sleep; wake & continue on WDT timeout.
+        wdt_disable();
     }
 }
 
