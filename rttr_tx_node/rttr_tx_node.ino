@@ -9,11 +9,13 @@
 #include <avr/sleep.h>      // Inc. Inline Macros for Sleep Modes
 #include <avr/interrupt.h>  // Required for interrupts.
 #include <avr/power.h>      // Power reduction management.
+#include <avr/delay.h>      // Delay functions
 #include "spi.h"            // Include my spi library.
 #include "rfm69w.h"         // Include my rfm69w library
 #include "rfm69w_reg.h"     // Register reference for rfm69w
 #include "rttr.h"           // Rttr RX/TX Node Common functions
 
+#define F_CPU 8000000UL // 8MHz - Used for delay timing
 #define DEBUG  // Enables Debug code. Comment out to disable debug code.
 
 // Function Declarations
@@ -34,6 +36,8 @@ uint8_t reset_count = 0;    // Setup value for reset count
 void setup() {
     RFM.setReg();  // Setup the registers & initial mode for the RFM69
     setupRFM();    // Application Specific Settings RFM69W
+    // DEV NOTE: This delay has no function, program executes correctly without it.
+    //_delay_ms(100); // DEBUG - 1000ms works, 500ms works, 100ms works, 0 works
     cli();         // Disable interrupts whilst setting them up.
     setup_int();   // Setup Interrupts
     // setup_wdt();   // Setup WDT Timeout Interrupt
@@ -262,6 +266,7 @@ void transmit(int8_t pkt) {       // Transmit Packet
         // the program has finished with it.
     }
     RFM.modeSleep();  // Return to Sleep mode to save power.
+    _delay_ms(1000); // 800uS delay, wait for RFM69W to go back to sleep
 }
 
 void trap_set() {
@@ -274,6 +279,7 @@ void trap_set() {
         // TODO: Add an additional DEBUG Tx Packet to count cycles
         transmit(4); // DEBUG
         if (reset_count == 3) {
+            //delay(1000); // DEBUG
             count = 0;
             reset_count = 0;
             transmit(3);            // Send packet indicating Reset
