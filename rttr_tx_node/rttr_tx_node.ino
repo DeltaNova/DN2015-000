@@ -79,6 +79,7 @@ void setupRFM() {
     RFM.singleByteWrite(RegDioMapping2, 0x07);
 }
 void setup_wdt() {
+    cli(); // Disable interrupts during setup.
     // Clear WDRF - Watchdog System Reset Flag to allow WDE to be cleared later.
     MCUSR &= ~(1 << WDRF);
     /*
@@ -118,8 +119,9 @@ void setup_wdt() {
     // Set Watch1dog Timer for Interrupt Mode, 8 second timeout.
     // WDT is enabled at this point.
     WDTCSR = (1 << WDP3)|(0 << WDP2)|(0 << WDP1)|(1 << WDP0)|
-             (1 << WDE)|(1 << WDIE)|
+             (0 << WDE)|(1 << WDIE)|  // Set WDT for interrupt mode
              (1 << WDCE)|(1 << WDIF);
+    sei(); // Enable interrupts
 }
 void gotosleep() {
     // Select the sleep mode to be use and enable it.
@@ -220,6 +222,7 @@ void ping(int8_t msg) {  // DEV Note: This is development code
     uint8_t tststr3[] = "Reset!"; // Case 3
     uint8_t tststr4[] = "DEBUG!"; // Case 4
 
+    // TODO: Can this be refactored?
     switch (msg) {
     case 0:
         for (uint8_t arrayChar = 0; arrayChar < (sizeof(tststr0)-1); arrayChar++)
@@ -271,7 +274,8 @@ uint8_t trap_set(uint8_t count) {
     static uint8_t reset_count = 0; // Setup persistant counter, initially 0.
     // Read PortD2 to get sensor state
     // 0 = set, 1 = triggered (Rat in Trap)
-    if (PIND2 == 1) {       // TODO: Check this is detecting correctly
+    if (PIND & ( 1 << PIND2)) {  // Try this in place of the line below.
+    //if (PIND2 == 1) {       // TODO: Check this is detecting correctly
         reset_count = 0;
     } else {
         reset_count = reset_count + 1;
