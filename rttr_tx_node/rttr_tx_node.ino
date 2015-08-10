@@ -273,9 +273,12 @@ void transmit(int8_t pkt) {       // Transmit Packet
     RFM.modeSleep();  // Return to Sleep mode to save power.
     // Having a delay appears to make the program execute more
     // consistantly. Why?? Sleep Delay??
-    _delay_ms(1000); // 800uS delay, wait for RFM69W to go back to sleep        <<<<< Is this still required now the ISR issue has been resolved?
+    _delay_ms(1000); // 800uS delay, wait for RFM69W to go back to sleep        <<<<< Is this still required now the ISR issue has been resolved? Yes.
+    // Without the delay a follow on packet is lost.
     // Delays that work: 1000ms,
-    // Delays that dont work: 500ms, 800ms
+    // Delays that dont work: 500ms, 800ms.
+
+    // Dev Note: Perhaps there is a delay in the RFM module going from Tx to sleep mode. A check to see if sleep mode is reached before continuing might be useful.
 }
 
 uint8_t trap_set(uint8_t count) {
