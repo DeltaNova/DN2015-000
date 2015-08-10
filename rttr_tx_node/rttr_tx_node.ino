@@ -3,19 +3,16 @@
 // Author: M. Tunstall
 // NOTE: This is heavily commented for my own learning/reference.
 
-// #include <Wire.h>         // Used for serial comms.
 #include <stdint.h>         // Enable fixed width integers.
 #include <avr/wdt.h>        // Inc. Inline Macros for WDT
 #include <avr/sleep.h>      // Inc. Inline Macros for Sleep Modes
 #include <avr/interrupt.h>  // Required for interrupts.
 #include <avr/power.h>      // Power reduction management.
-//#include <util/delay.h>      // Delay functions
 #include "spi.h"            // Include my spi library.
 #include "rfm69w.h"         // Include my rfm69w library
 #include "rfm69w_reg.h"     // Register reference for rfm69w
 #include "rttr.h"           // Rttr RX/TX Node Common functions
 
-//#define F_CPU 8000000UL // 8MHz - Used for delay timing
 #define DEBUG  // Enables Debug code. Comment out to disable debug code.
 
 // Function Declarations
@@ -34,11 +31,8 @@ volatile uint8_t wdtFlag = 0x00;  // Setup a flag for WDT interrupt.
 void setup() {
     RFM.setReg();  // Setup the registers & initial mode for the RFM69
     setupRFM();    // Application Specific Settings RFM69W
-    // DEV NOTE: This delay has no function, program executes correctly without it.
-    //_delay_ms(100); // DEBUG - 1000ms works, 500ms works, 100ms works, 0 works
     cli();         // Disable interrupts whilst setting them up.
     setup_int();   // Setup Interrupts
-    // setup_wdt();   // Setup WDT Timeout Interrupt
     sei();         // Enable interrupts
     return;
 }
@@ -82,11 +76,10 @@ void setup_wdt() {
     cli(); // Disable interrupts during setup.
     // Clear WDRF - Watchdog System Reset Flag to allow WDE to be cleared later.
     MCUSR &= ~(1 << WDRF);
-    /*
-    To perform adjustments to WDE & prescaler bits:
-    - Set the WDCE - watchdog change enable bit
-    - Make adjustments within 4 clock cycles.
-    */
+
+    // To perform adjustments to WDE & prescaler bits:
+    // - Set the WDCE - watchdog change enable bit
+    // - Make adjustments within 4 clock cycles.
 
     WDTCSR |= (1 << WDCE)| (1 << WDE);  // Set WDCE
 
@@ -155,52 +148,27 @@ void gotosleep() {
     ADCSRA |= (1 << ADEN);
 }
 void setup_int() {
-    /*---------------------
-     PIN CHANGE INTERRUPTS
-    ----------------------*/
-
-    // Set PB1 as interrupt input.
-    //DDRB &= ~(1 << DDB1);
-    // Not using internal pullup on PB1 as want to trigger on a logic 1
-    // RFM69W DIO0 is logic 0 until set. Pull down resistor not used.
-    //PCICR |= (1 << PCIE0);  // Enable PCMSK0 covering PCINT[7:0]
-    //PCMSK0 |= (1 << PCINT1);  // Set mask to only interrupt on PCINT1
-
-    /*---------------------
-     EXTERNAL INTERRUPTS
-    ----------------------*/
+    //---------------------
+    // EXTERNAL INTERRUPTS
+    //---------------------
 
     DDRD &= ~(1 << DDD2);     // Set PD2 (INT0) as an input
     PORTD |= (1 << PORTD2);   // Enable internal pullup resistor
     EICRA |= (1 << ISC00);    // Set INT0 to trigger on any change
     EIMSK &= ~(1 << INT0);    // Disable INT0.
 }
-/*ISR(PCINT0_vect) {      // PCINT0 is vector for PCINT[7:0]
-    // Dev Note: Serial.println() cmds can't be used in an ISR.
-
-    //  The ISR will set a flag that can be tested by the main loop.
-    //  The interrupt is triggered by DIO0 on RFM69W.
-    //  Setting a local flag via this interrupt allows the monitoring of
-    //  RFM69W without the need to constantly read the register statuses
-    //  over the SPI bus.
-
-    intFlag = 0xff;  // Set interrupt flag.
-}*/
 
 ISR(INT0_vect) {  // Triggers on INT0 (See EICRA Reg for Trigger Setup)
-    // The ISR does nothing. The act of triggering the ISR wakes the
-    // MCU from its deep sleep and resumes program execution.
-
-    // DEV NOTE: Disable Interrupt to prevent trigger
-    //     jitter causing multiple executions of ISR
+    // The act of triggering the ISR wakes the MCU from its deep sleep
+    // and resumes program execution.
     EIMSK &= ~(1 << INT0);  // Disable INT0
 }
 
-ISR(WDT_vect) {         // Runs when WDT timeout is reached
-    // Dev Note: This ISR is intended only for waking
-    // the mcu from a sleep mode. Speed of the ISR is not important in this case.
-
+ISR(WDT_vect) {  // Runs when WDT timeout is reached
+    // Dev Note: This ISR is intended only for waking the mcu from a
+    // sleep mode. Speed of the ISR is not important in this case.
 }
+
 void ping(int8_t msg) {  // DEV Note: This is development code
     // Load selected data into FIFO Register for transmission
 
@@ -260,28 +228,10 @@ void transmit(int8_t pkt) {       // Transmit Packet
     // happen as soon as Tx mode is enabled.
     RFM.modeTransmit();  // Data being sent at 4.8kbps
 
-    // Should not have to worry about Tx Startup delay (800uS) as the
-    // program waits here until the packet sent flag is raised.
-
     while (!(RFM.singleByteRead(RegIrqFlags2) & 0x08)) {
-        // Keeps checking to see if the packet sent bit is set.
-        // Once packet send is confirmed the program will continue.
-        // The reason for the loop here is that to save power the
-        // transmitter needs to be turned off as soon as possible after
-        // the program has finished with it.
+        // Wait until packet sent before proceeding to sleep.
     }
     RFM.modeSleep();  // Return to Sleep mode to save power.
-    // Having a delay appears to make the program execute more
-    // consistantly. Why?? Sleep Delay??
-    //_delay_ms(1000); // 800uS delay, wait for RFM69W to go back to sleep        <<<<< Is this still required now the ISR issue has been resolved? Yes.
-    // Without the delay a follow on packet is lost.
-    // Delays that work: 1000ms,
-    // Delays that dont work: 500ms, 800ms.
-    // Cause: I suspect the cause of the packet loss is due to the receiver code.
-    // The receiver is waiting on an interrupt to read the packet.
-    // After reading one packet the flag for the the interrupt is reset.
-    // If the interrupt is missed the packet isnt read. However manually triggering the interrupt on the receiver yeilds no additional packets.
-
 }
 
 uint8_t trap_set(uint8_t count) {
