@@ -275,17 +275,17 @@ void ping(int8_t msg) { //TODO: This is development code and needs to be replace
 void listen() {
     // Listens for an incomming packet via RFM69W
     // Read the Payload Ready bit from RegIrqFlags2 to see if any data
-    #ifdef DEBUG
-    //Serial.println("Start Listening: ");
-    #endif // DEBUG
-    while (RFM.singleByteRead(RegIrqFlags2) & 0x04) {
-    // True whilst FIFO still contains data.
-        Serial.print("Rec: ");
-        Serial.println(RFM.singleByteRead(RegFifo));
+
+    while (RFM.singleByteRead(RegIrqFlags2) & 0x04) { // True whilst FIFO still contains data.
+        uint8_t char_count = 0;
+        while (char_count < 7) {
+            Serial.print(RFM.singleByteRead(RegFifo));
+            Serial.print(" ");
+            char_count++;
+        }
+        Serial.print(RFM.singleByteRead(RegFifo));
+        Serial.println(" ");
     }
-    #ifdef DEBUG
-    //Serial.println("Stop Listening.");
-    #endif // DEBUG
     intFlag = 0x00;  // Reset interrupt flag
 }
 /*
