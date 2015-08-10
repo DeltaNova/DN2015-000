@@ -9,7 +9,7 @@
 #include <avr/sleep.h>      // Inc. Inline Macros for Sleep Modes
 #include <avr/interrupt.h>  // Required for interrupts.
 #include <avr/power.h>      // Power reduction management.
-#include <avr/delay.h>      // Delay functions
+#include <util/delay.h>      // Delay functions
 #include "spi.h"            // Include my spi library.
 #include "rfm69w.h"         // Include my rfm69w library
 #include "rfm69w_reg.h"     // Register reference for rfm69w
@@ -177,13 +177,13 @@ void setup_int() {
 }
 /*ISR(PCINT0_vect) {      // PCINT0 is vector for PCINT[7:0]
     // Dev Note: Serial.println() cmds can't be used in an ISR.
-    /*
-        The ISR will set a flag that can be tested by the main loop.
-        The interrupt is triggered by DIO0 on RFM69W.
-        Setting a local flag via this interrupt allows the monitoring of
-        RFM69W without the need to constantly read the register statuses
-        over the SPI bus.
-    */
+
+    //  The ISR will set a flag that can be tested by the main loop.
+    //  The interrupt is triggered by DIO0 on RFM69W.
+    //  Setting a local flag via this interrupt allows the monitoring of
+    //  RFM69W without the need to constantly read the register statuses
+    //  over the SPI bus.
+
     intFlag = 0xff;  // Set interrupt flag.
 }*/
 
