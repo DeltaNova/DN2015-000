@@ -277,8 +277,11 @@ void transmit(int8_t pkt) {       // Transmit Packet
     // Without the delay a follow on packet is lost.
     // Delays that work: 1000ms,
     // Delays that dont work: 500ms, 800ms.
+    // Cause: I suspect the cause of the packet loss is due to the receiver code.
+    // The receiver is waiting on an interrupt to read the packet.
+    // After reading one packet the flag for the the interrupt is reset.
+    // If the interrupt is missed the packet isnt read. However manually triggering the interrupt on the receiver yeilds no additional packets.
 
-    // Dev Note: Perhaps there is a delay in the RFM module going from Tx to sleep mode. A check to see if sleep mode is reached before continuing might be useful.
 }
 
 uint8_t trap_set(uint8_t count) {
