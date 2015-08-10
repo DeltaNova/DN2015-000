@@ -29,7 +29,7 @@ typedef Spi SPIx;                // Create Global instance of the Spi Class
 RFM69W<SPIx> RFM;        // Create Global instance of RFM69W Class
 volatile uint8_t intFlag = 0x00;  // Setup a flag for monitoring the interrupt.
 volatile uint8_t wdtFlag = 0x00;  // Setup a flag for monitoring WDT interrupt.
-uint8_t mode = 0x00;     // Node startup mode. Rx Default.
+//uint8_t mode = 0x00;     // Node startup mode. Rx Default.
 
 void setup() {
 
@@ -40,15 +40,16 @@ void setup() {
 
     RFM.setReg();  // Setup the registers & initial mode for the RFM69
     setupRFM();    // Application Specific Settings RFM69W
-    //setup_mode();  // Determine the startup mode from status of PB0.
-    setup_mode2(); // Force Tx Mode.
+    setup_mode();  // Determine the startup mode from status of PB0.
+    //setup_mode2(); // Force Tx Mode.
     // Place powerSave() after setupRFM as the SPI bus is disabled until required,
     //powerSave();    // Enable powersaving features
     setup_int();   // Setup Interrupts
-    setup_wdt();   // Setup WDT Timeout Interrupt
+    //setup_wdt();   // Setup WDT Timeout Interrupt
     sei();  // Enable interrupts
     return;
 }
+/*
 void powerSave() {
     power_adc_disable(); // Not using ADC
     power_twi_disable(); // Not using I2C
@@ -66,7 +67,7 @@ void powerSave() {
     //ADCSRA &= ~(1<<ADEN);
     //ADCSRA |= (1<<ADEN);
 }
-
+*/
 void setupRFM() {
     // Write Custom Setup Values to registers
     // TODO: There are defaults that the the RFM library loads can this be merge to
@@ -96,6 +97,7 @@ void setupRFM() {
 }
 
 void setup_mode() {
+    /*
     // Set PB0 as Tx/Rx Mode select input
     DDRB &= ~(1 << DDB0);
     // No internal pullup on PB0, hardwired to VCC (Tx) or GND (Rx).
@@ -107,10 +109,10 @@ void setup_mode() {
         // RFM69W configured to startup in sleep mode and will wake to
         // transmit as required.
         // TODO: Check interrupt settings / DIO0 map for sleep mode
-    } else {
+    } else */{
         // Rx Mode Selected
         #ifdef DEBUG
-        power_usart0_enable();// Enable Serial comms for Rx Mode.
+        //power_usart0_enable();// Enable Serial comms for Rx Mode.
         Serial.begin(19200);  // Setup Serial Comms
         Serial.println("Rx Mode");  // DEBUG: Print "Rx Mode"
         #endif
@@ -119,15 +121,16 @@ void setup_mode() {
     return;
 }
 
+/*
 void setup_mode2() {
-    /*
-    Dev Note:
-    Want to test power consumption without using PORTB0 to select
-    between Tx/Rx modes.
-    */
+
+    // Dev Note:
+    // Want to test power consumption without using PORTB0 to select
+    // between Tx/Rx modes.
+
     mode=0xff;  // Force Tx Mode.
     }
-
+*/
 void setup_wdt() {
     // Clear WDRF - Watchdog System Reset Flag to allow WDE to be cleared later.
     MCUSR &= ~(1<<WDRF);
@@ -230,7 +233,7 @@ ISR(WDT_vect) { // Runs when WDT timeout is reached
     // Dev Note: This ISR is intended only for waking
     // the mcu from a sleep mode. Speed of the ISR is not important in this case.
 }
-
+/*
 void ping(int8_t msg) { //TODO: This is development code and needs to be replace with something more functional.
     // Load selected data into FIFO Register for transmission
 
@@ -268,12 +271,12 @@ void ping(int8_t msg) { //TODO: This is development code and needs to be replace
             RFM.singleByteWrite(RegFifo, tststr[arrayChar]);
     }
 }
-
+*/
 void listen() {
     // Listens for an incomming packet via RFM69W
     // Read the Payload Ready bit from RegIrqFlags2 to see if any data
     #ifdef DEBUG
-    Serial.println("Start Listening: ");
+    //Serial.println("Start Listening: ");
     #endif // DEBUG
     while (RFM.singleByteRead(RegIrqFlags2) & 0x04) {
     // True whilst FIFO still contains data.
@@ -281,11 +284,11 @@ void listen() {
         Serial.println(RFM.singleByteRead(RegFifo));
     }
     #ifdef DEBUG
-    Serial.println("Stop Listening.");
+    //Serial.println("Stop Listening.");
     #endif // DEBUG
     intFlag = 0x00;  // Reset interrupt flag
 }
-
+/*
 void transmit() {
     // The SPI communication and registers have been set by setup()
 
@@ -314,23 +317,23 @@ void transmitter() {
         // Execution resumes at this point after the ISR is triggered
     }
 }
-
+*/
 void receiver() {
     // Continuously check for incomming data
     // Whilst interrupt flag set, listen for incomming data.
     while (1) {
-        while (intFlag == 0xff) {
+        //while (intFlag == 0xff) {
             listen();
-        }
+        //}
     }
 }
 
 void loop() {
-
-    if (mode == 0xff) {     // If node configured as a Transmitter.
-        transmitter();      // Run transmitter node loop
-    } else {                // If node configured as a Receiver.
+    Serial.println("Loop");
+    //if (mode == 0xff) {     // If node configured as a Transmitter.
+    //    transmitter();      // Run transmitter node loop
+    //} else {                // If node configured as a Receiver.
         receiver();         // Run transmitter node loop
-    }
+    //}
 }
 
