@@ -9,13 +9,13 @@
 #include <avr/sleep.h>      // Inc. Inline Macros for Sleep Modes
 #include <avr/interrupt.h>  // Required for interrupts.
 #include <avr/power.h>      // Power reduction management.
-#include <util/delay.h>      // Delay functions
+//#include <util/delay.h>      // Delay functions
 #include "spi.h"            // Include my spi library.
 #include "rfm69w.h"         // Include my rfm69w library
 #include "rfm69w_reg.h"     // Register reference for rfm69w
 #include "rttr.h"           // Rttr RX/TX Node Common functions
 
-#define F_CPU 8000000UL // 8MHz - Used for delay timing
+//#define F_CPU 8000000UL // 8MHz - Used for delay timing
 #define DEBUG  // Enables Debug code. Comment out to disable debug code.
 
 // Function Declarations
@@ -273,7 +273,7 @@ void transmit(int8_t pkt) {       // Transmit Packet
     RFM.modeSleep();  // Return to Sleep mode to save power.
     // Having a delay appears to make the program execute more
     // consistantly. Why?? Sleep Delay??
-    _delay_ms(1000); // 800uS delay, wait for RFM69W to go back to sleep        <<<<< Is this still required now the ISR issue has been resolved? Yes.
+    //_delay_ms(1000); // 800uS delay, wait for RFM69W to go back to sleep        <<<<< Is this still required now the ISR issue has been resolved? Yes.
     // Without the delay a follow on packet is lost.
     // Delays that work: 1000ms,
     // Delays that dont work: 500ms, 800ms.
