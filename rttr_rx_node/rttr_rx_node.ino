@@ -27,7 +27,7 @@ void setup_wdt();
 
 typedef Spi SPIx;                // Create Global instance of the Spi Class
 RFM69W<SPIx> RFM;        // Create Global instance of RFM69W Class
-volatile uint8_t packet_count = 0;  // Setup a flag for monitoring the interrupt.
+uint8_t packet_count = 0;  // Setup a flag for monitoring the interrupt.
 volatile uint8_t wdtFlag = 0x00;  // Setup a flag for monitoring WDT interrupt.
 //uint8_t mode = 0x00;     // Node startup mode. Rx Default.
 
@@ -196,7 +196,7 @@ ISR(PCINT0_vect) {  // PCINT0 is vector for PCINT[7:0]
         over the SPI bus.
     */
     //packet_count = packet_count + 1;  // Increment packet_count.
-    packet_count += 1;
+    ++packet_count;
 }
 
 ISR(WDT_vect) { // Runs when WDT timeout is reached
@@ -205,29 +205,34 @@ ISR(WDT_vect) { // Runs when WDT timeout is reached
 }
 
 void listen() {
-    Serial.println(packet_count);
+    //Serial.println(packet_count);
     // Listens for an incomming packet via RFM69W
     // Read the Payload Ready bit from RegIrqFlags2 to see if any data
     uint8_t char_count = 0;
-    while ((char_count < 7) && (RFM.singleByteRead(RegIrqFlags2) & 0x04)){
+    while ((char_count < 8) && (RFM.singleByteRead(RegIrqFlags2) & 0x04)){
     //while (RFM.singleByteRead(RegIrqFlags2) & 0x04) { // True whilst FIFO still contains data.
         // Read 8 Byte Packet
-
-        //while (char_count < 7) {
-            Serial.print(RFM.singleByteRead(RegFifo));
-            Serial.print(" ");
-            char_count++;
+        Serial.print(RFM.singleByteRead(RegFifo));
+        Serial.print(" ");
+        ++char_count;
+        if (char_count == 8){
+            --packet_count; // Need to decrement twice to work correctly.
+            --packet_count; // Is the ISR triggering on rising & falling edge??
+            Serial.println();
         }
-    //while (RFM.singleByteRead(RegIrqFlags2) & 0x04){
+    }
+    /*
+    if ((char_count = 7) && (RFM.singleByteRead(RegIrqFlags2) & 0x04)){
+
         Serial.println(RFM.singleByteRead(RegFifo));
         //Serial.println(" ");
         // End 8 Byte Packet
-        //--packet_count;
-        packet_count -= 1;
-        Serial.println(packet_count);
-    //}
-    //packet_count = packet_count - 1; // Decrement Packet Count
+        char_count++;
+        --packet_count; // Why is this not decrementing?
 
+    }
+    */
+    Serial.println(packet_count);
 }
 
 void loop() {
