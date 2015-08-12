@@ -27,7 +27,7 @@ void setup_wdt();
 
 typedef Spi SPIx;                // Create Global instance of the Spi Class
 RFM69W<SPIx> RFM;        // Create Global instance of RFM69W Class
-volatile uint8_t intFlag = 0x00;  // Setup a flag for monitoring the interrupt.
+volatile uint8_t packet_count = 0;  // Setup a flag for monitoring the interrupt.
 volatile uint8_t wdtFlag = 0x00;  // Setup a flag for monitoring WDT interrupt.
 //uint8_t mode = 0x00;     // Node startup mode. Rx Default.
 
@@ -41,33 +41,12 @@ void setup() {
     RFM.setReg();  // Setup the registers & initial mode for the RFM69
     setupRFM();    // Application Specific Settings RFM69W
     setup_mode();  // Determine the startup mode from status of PB0.
-    //setup_mode2(); // Force Tx Mode.
-    // Place powerSave() after setupRFM as the SPI bus is disabled until required,
-    //powerSave();    // Enable powersaving features
     setup_int();   // Setup Interrupts
     //setup_wdt();   // Setup WDT Timeout Interrupt
     sei();  // Enable interrupts
     return;
 }
-/*
-void powerSave() {
-    power_adc_disable(); // Not using ADC
-    power_twi_disable(); // Not using I2C
-    power_timer0_disable();
-    power_timer1_disable();
-    power_timer2_disable();
-    //power_spi_disable();  // Todo: Might need to reenable for Rx Mode later.
-    power_usart0_disable(); // Disable by default, reenable if needed.
 
-    // Disable Interrupts
-    // Note: No need as they are not enabled until after the powerSave function is used.
-    //ACSR |= ~(1<<ACI);// Clear the analogue comparator interrupt if it was trigged from the disable command.
-    //ACSR &= (1<<ACD); // Disable the analogue comparator
-    //ADCSRA = 0; // Disable ADC
-    //ADCSRA &= ~(1<<ADEN);
-    //ADCSRA |= (1<<ADEN);
-}
-*/
 void setupRFM() {
     // Write Custom Setup Values to registers
     // TODO: There are defaults that the the RFM library loads can this be merge to
@@ -121,16 +100,6 @@ void setup_mode() {
     return;
 }
 
-/*
-void setup_mode2() {
-
-    // Dev Note:
-    // Want to test power consumption without using PORTB0 to select
-    // between Tx/Rx modes.
-
-    mode=0xff;  // Force Tx Mode.
-    }
-*/
 void setup_wdt() {
     // Clear WDRF - Watchdog System Reset Flag to allow WDE to be cleared later.
     MCUSR &= ~(1<<WDRF);
@@ -220,120 +189,61 @@ void setup_int() {
 ISR(PCINT0_vect) {  // PCINT0 is vector for PCINT[7:0]
     // Dev Note: Serial.println() cmds can't be used in an ISR.
     /*
-        The ISR will set a flag that can be tested by the main loop.
+        The ISR will incrementthe packet_count that can be tested by the main loop.
         The interrupt is triggered by DIO0 on RFM69W.
         Setting a local flag via this interrupt allows the monitoring of
         RFM69W without the need to constantly read the register statuses
         over the SPI bus.
     */
-    intFlag = 0xff;  // Set interrupt flag.
+    //packet_count = packet_count + 1;  // Increment packet_count.
+    packet_count += 1;
 }
 
 ISR(WDT_vect) { // Runs when WDT timeout is reached
     // Dev Note: This ISR is intended only for waking
     // the mcu from a sleep mode. Speed of the ISR is not important in this case.
 }
-/*
-void ping(int8_t msg) { //TODO: This is development code and needs to be replace with something more functional.
-    // Load selected data into FIFO Register for transmission
 
-    // Sends teststring stored in array via RFM69W
-    // Workout how many characters there are to send.
-    // 1 is deducted from count to remove the trailing null char.
-    uint8_t tststr[] = "ERROR!";
-    uint8_t tststr0[] = "Hello_";
-    uint8_t tststr1[] = "World!";
-    // Dev Note: Should this result in 2 packets being received?
-    //           Only detecting one.
-    // - Update: Since fixed length packets are used the only the data
-    //           that can be contained in the packet is sent.
-    //           It appears the act of sending a single packet clears
-    //           any residual data in the FIFO. If there is data for a
-    //           follow on packet it should be sent as a separate Tx
-    //           operation.
-    uint8_t tststr2[] = "0123456789ABCDEF";
-
-    switch (msg) {
-    case 0:
-        for (uint8_t arrayChar = 0; arrayChar < (sizeof(tststr0)-1); arrayChar++)
-            RFM.singleByteWrite(RegFifo, tststr0[arrayChar]);
-        break;
-    case 1:
-        for (uint8_t arrayChar = 0; arrayChar < (sizeof(tststr1)-1); arrayChar++)
-            RFM.singleByteWrite(RegFifo, tststr1[arrayChar]);
-        break;
-    case 2:
-        for (uint8_t arrayChar = 0; arrayChar < (sizeof(tststr2)-1); arrayChar++)
-            RFM.singleByteWrite(RegFifo, tststr2[arrayChar]);
-        break;
-    default:
-        for (uint8_t arrayChar = 0; arrayChar < (sizeof(tststr)-1); arrayChar++)
-            RFM.singleByteWrite(RegFifo, tststr[arrayChar]);
-    }
-}
-*/
 void listen() {
+    Serial.println(packet_count);
     // Listens for an incomming packet via RFM69W
     // Read the Payload Ready bit from RegIrqFlags2 to see if any data
+    uint8_t char_count = 0;
+    while ((char_count < 7) && (RFM.singleByteRead(RegIrqFlags2) & 0x04)){
+    //while (RFM.singleByteRead(RegIrqFlags2) & 0x04) { // True whilst FIFO still contains data.
+        // Read 8 Byte Packet
 
-    while (RFM.singleByteRead(RegIrqFlags2) & 0x04) { // True whilst FIFO still contains data.
-        uint8_t char_count = 0;
-        while (char_count < 7) {
+        //while (char_count < 7) {
             Serial.print(RFM.singleByteRead(RegFifo));
             Serial.print(" ");
             char_count++;
         }
-        Serial.print(RFM.singleByteRead(RegFifo));
-        Serial.println(" ");
-    }
-    intFlag = 0x00;  // Reset interrupt flag
-}
-/*
-void transmit() {
-    // The SPI communication and registers have been set by setup()
+    //while (RFM.singleByteRead(RegIrqFlags2) & 0x04){
+        Serial.println(RFM.singleByteRead(RegFifo));
+        //Serial.println(" ");
+        // End 8 Byte Packet
+        //--packet_count;
+        packet_count -= 1;
+        Serial.println(packet_count);
+    //}
+    //packet_count = packet_count - 1; // Decrement Packet Count
 
-    // The RFM69W should be in Sleep mode.
-    // Load bytes to transmit into the FIFO register.
-    ping(2);  // Pass an int to select which msg to send.
-    // Data will be sent once the conditions for Tx have been met.
-    // In packet mode & data already in the FIFO buffer this should
-    // happen as soon as Tx mode is enabled.
-    RFM.modeTransmit();  // Data being sent at 4.8kbps
-    while (!(RFM.singleByteRead(RegIrqFlags2) & 0x08)) {
-        // Keeps checking to see if the packet sent bit is set.
-        // Once packet send is confirmed the program will continue.
-        // The reason for the loop here is that to save power the
-        // transmitter needs to be turned off as soon as possible after
-        // the program has finished with it.
-    }
-    RFM.modeSleep();  // Return to Sleep mode to save power.
 }
 
-void transmitter() {
-    // Transmitter Node Loop
-    while (1) {
-        transmit();  // Transmit Packet.
-        gotosleep(); // Enter Low Power Mode until WDT interrupt.
-        // Execution resumes at this point after the ISR is triggered
-    }
-}
-*/
 void receiver() {
     // Continuously check for incomming data
     // Whilst interrupt flag set, listen for incomming data.
     while (1) {
-        //while (intFlag == 0xff) {
+        while (packet_count != 0) {
             listen();
-        //}
+
+            ;
+        }
     }
 }
 
 void loop() {
     Serial.println("Loop");
-    //if (mode == 0xff) {     // If node configured as a Transmitter.
-    //    transmitter();      // Run transmitter node loop
-    //} else {                // If node configured as a Receiver.
-        receiver();         // Run transmitter node loop
-    //}
+    receiver();  // Run transmitter node loop
 }
 
