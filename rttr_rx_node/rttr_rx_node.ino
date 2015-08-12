@@ -230,20 +230,10 @@ void listen() {
 
 }
 
-void receiver() {
-    // Continuously check for incomming data
-    // Whilst interrupt flag set, listen for incomming data.
-    while (1) {
-        while (packet_count != 0) {
-            listen();
-
-            ;
-        }
-    }
-}
-
 void loop() {
-    Serial.println("Loop");
-    receiver();  // Run transmitter node loop
+    //Serial.println("Loop");
+    while (packet_count != 0) {
+        listen();
+    }
 }
 
